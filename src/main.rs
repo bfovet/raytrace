@@ -1,29 +1,26 @@
-use std::error::Error;
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use itertools::Itertools;
+use std::{fs, io};
+
+const MAX_VALUE: u8 = 255;
 
 /// Write a ppm file
-fn write_ppm_file(filename: &str, width: u32, height: u32) -> Result<(), Box<dyn Error>> {
-    let file = File::create(filename)?;
-    let mut writer = BufWriter::new(file);
-
-    writeln!(writer, "P3")?;
-    writeln!(writer, "{width} {height}")?;
-    writeln!(writer, "255")?;
-
-    for j in 0..height {
-        for i in 0..width {
-            let r = i as f64 / (width - 1) as f64;
-            let g = j as f64 / (height - 1) as f64;
+fn write_ppm_file(filename: &str, width: u32, height: u32) -> io::Result<()> {
+    let pixels = (0..height)
+        .cartesian_product(0..width)
+        .map(|(y, x)| {
+            let r = y as f64 / (width - 1) as f64;
+            let g = x as f64 / (height - 1) as f64;
             let b = 0.0;
 
-            let ir = (255.999 * r) as i32;
-            let ig = (255.999 * g) as i32;
-            let ib = (255.999 * b) as i32;
+            format!("{} {} {}", r * 255.0, g * 255.0, b * 255.0)
+        })
+        .join("\n");
 
-            writeln!(writer, "{ir} {ig} {ib}")?;
-        }
-    }
+    fs::write(filename, format!(
+        "P3
+{width} {height}
+{MAX_VALUE}
+{pixels}"))?;
 
     Ok(())
 }
