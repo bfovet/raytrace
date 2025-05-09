@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use indicatif::ProgressIterator;
 use std::{fs, io};
 
 const MAX_VALUE: u8 = 255;
@@ -7,6 +8,7 @@ const MAX_VALUE: u8 = 255;
 fn write_ppm_file(filename: &str, width: u32, height: u32) -> io::Result<()> {
     let pixels = (0..height)
         .cartesian_product(0..width)
+        .progress_count(height as u64 * width as u64)
         .map(|(y, x)| {
             let r = y as f64 / (width - 1) as f64;
             let g = x as f64 / (height - 1) as f64;
