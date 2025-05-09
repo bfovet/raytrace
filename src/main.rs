@@ -42,3 +42,14 @@ fn main() {
         println!("PPM file '{filename}' created successfully.");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_gradient() {
+        let pixels = generate_gradient(3, 3);
+        assert_eq!(pixels, "0 0 0\n127 0 0\n255 0 0\n0 127 0\n127 127 0\n255 127 0\n0 255 0\n127 255 0\n255 255 0");
+    }
+}
