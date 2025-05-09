@@ -13,7 +13,7 @@ fn generate_gradient(width: u32, height: u32) -> String {
             let g = y as f64 / (height - 1) as f64;
             let b = 0.0;
 
-            format!("{} {} {}", r * 255.0, g * 255.0, b * 255.0)
+            format!("{} {} {}", (r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8)
         })
         .join("\n")
 }
