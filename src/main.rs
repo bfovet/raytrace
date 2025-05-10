@@ -1,5 +1,6 @@
 use indicatif::ProgressIterator;
 use itertools::Itertools;
+use nalgebra::Vector3;
 use std::{fs, io};
 
 const MAX_VALUE: u8 = 255;
@@ -49,6 +50,17 @@ fn main() {
         eprintln!("Error writing PPM file: {e}");
     } else {
         println!("PPM file '{filename}' created successfully.");
+    }
+}
+
+struct Ray {
+    origin: Vector3<f64>,
+    direction: Vector3<f64>,
+}
+
+impl Ray {
+    fn at(&self, t: f64) -> Vector3<f64> {
+        self.origin + self.direction * t
     }
 }
 
