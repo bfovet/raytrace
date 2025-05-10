@@ -1,5 +1,5 @@
-use itertools::Itertools;
 use indicatif::ProgressIterator;
+use itertools::Itertools;
 use std::{fs, io};
 
 const MAX_VALUE: u8 = 255;
@@ -13,7 +13,12 @@ fn generate_gradient(width: u32, height: u32) -> String {
             let g = y as f64 / (height - 1) as f64;
             let b = 0.0;
 
-            format!("{} {} {}", (r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8)
+            format!(
+                "{} {} {}",
+                (r * 255.0) as u8,
+                (g * 255.0) as u8,
+                (b * 255.0) as u8
+            )
         })
         .join("\n")
 }
@@ -22,11 +27,15 @@ fn generate_gradient(width: u32, height: u32) -> String {
 fn write_ppm_file(filename: &str, width: u32, height: u32) -> io::Result<()> {
     let pixels = generate_gradient(width, height);
 
-    fs::write(filename, format!(
-        "P3
+    fs::write(
+        filename,
+        format!(
+            "P3
 {width} {height}
 {MAX_VALUE}
-{pixels}"))?;
+{pixels}"
+        ),
+    )?;
 
     Ok(())
 }
@@ -50,6 +59,9 @@ mod tests {
     #[test]
     fn test_generate_gradient() {
         let pixels = generate_gradient(3, 3);
-        assert_eq!(pixels, "0 0 0\n127 0 0\n255 0 0\n0 127 0\n127 127 0\n255 127 0\n0 255 0\n127 255 0\n255 255 0");
+        assert_eq!(
+            pixels,
+            "0 0 0\n127 0 0\n255 0 0\n0 127 0\n127 127 0\n255 127 0\n0 255 0\n127 255 0\n255 255 0"
+        );
     }
 }
