@@ -41,7 +41,10 @@ fn generate_gradient(width: u32, height: u32) -> String {
 
             let pixel_color = ray.color() * MAX_VALUE as f64;
 
-            format!("{} {} {}", pixel_color.x as u8, pixel_color.y as u8, pixel_color.z as u8)
+            format!(
+                "{} {} {}",
+                pixel_color.x as u8, pixel_color.y as u8, pixel_color.z as u8
+            )
         })
         .join("\n")
 }
@@ -84,10 +87,23 @@ impl Ray {
     }
 
     fn color(&self) -> Vector3<f64> {
+        if hit_sphere(&Vector3::new(0.0, 0.0, -1.0), 0.5, self) {
+            return Vector3::new(1.0, 0.0, 0.0);
+        }
+
         let unit_direction = self.direction.normalize();
         let a = 0.5 * (unit_direction.y + 1.0);
         Vector3::new(1.0, 1.0, 1.0).lerp(Vector3::new(0.5, 0.7, 1.0), a)
     }
+}
+
+fn hit_sphere(center: &Vector3<f64>, radius: f64, ray: &Ray) -> bool {
+    let oc = center - ray.origin;
+    let a = ray.direction.dot(&ray.direction);
+    let b = -2.0 * ray.direction.dot(&oc);
+    let c = oc.dot(&oc) - radius.powi(2);
+    let discriminant = b * b - 4.0 * a * c;
+    discriminant >= 0.0
 }
 
 #[cfg(test)]
