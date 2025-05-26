@@ -3,6 +3,7 @@ use itertools::Itertools;
 use lerp::Lerp;
 use nalgebra::Vector3;
 use std::{fs, io};
+use lerp::num_traits::real::Real;
 
 const IMAGE_WIDTH: u32 = 400;
 const MAX_VALUE: u8 = 255;
@@ -87,8 +88,10 @@ impl Ray {
     }
 
     fn color(&self) -> Vector3<f64> {
-        if hit_sphere(&Vector3::new(0.0, 0.0, -1.0), 0.5, self) {
-            return Vector3::new(1.0, 0.0, 0.0);
+        let t = hit_sphere(&Vector3::new(0.0, 0.0, -1.0), 0.5, self);
+        if t > 0.0 {
+            let n = (self.at(t) - Vector3::new(0.0, 0.0, -1.0)).normalize();
+            return 0.5 * n.add_scalar(1.0);
         }
 
         let unit_direction = self.direction.normalize();
@@ -97,13 +100,18 @@ impl Ray {
     }
 }
 
-fn hit_sphere(center: &Vector3<f64>, radius: f64, ray: &Ray) -> bool {
+fn hit_sphere(center: &Vector3<f64>, radius: f64, ray: &Ray) -> f64 {
     let oc = center - ray.origin;
     let a = ray.direction.dot(&ray.direction);
     let b = -2.0 * ray.direction.dot(&oc);
     let c = oc.dot(&oc) - radius.powi(2);
     let discriminant = b * b - 4.0 * a * c;
-    discriminant >= 0.0
+
+    if discriminant < 0.0 {
+        return -1.0;
+    } else {
+        return (-b-discriminant.sqrt())/(2.0*a);
+    }
 }
 
 #[cfg(test)]
