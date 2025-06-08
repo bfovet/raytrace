@@ -1,7 +1,7 @@
 use indicatif::ProgressIterator;
 use itertools::Itertools;
 use lerp::Lerp;
-use nalgebra::Vector3;
+use nalgebra::{Vector3};
 use std::{fs, io};
 
 const IMAGE_WIDTH: u32 = 400;
@@ -17,19 +17,30 @@ const CAMERA_CENTER: Vector3<f64> = Vector3::new(0.0, 0.0, 0.0);
 const VIEWPORT_U: Vector3<f64> = Vector3::new(VIEWPORT_WIDTH, 0.0, 0.0);
 const VIEWPORT_V: Vector3<f64> = Vector3::new(0.0, -VIEWPORT_HEIGHT, 0.0);
 
-fn generate_gradient(width: u32, height: u32) -> String {
+fn main() -> io::Result<()> {
+    let mut world = HittableList { hittables: vec![] };
+
+    world.add(Sphere {
+        center: Vector3::new(0.0, 0.0, -1.0),
+        radius: 0.5
+    });
+    world.add(Sphere {
+        center: Vector3::new(0.0, -100.5, -1.0),
+        radius: 100.0
+    });
+
     // Calculate the horizontal and vertical delta vectors from pixel to pixel
-    let pixel_delta_u = VIEWPORT_U / width as f64;
-    let pixel_delta_v = VIEWPORT_V / height as f64;
+    let pixel_delta_u = VIEWPORT_U / IMAGE_WIDTH as f64;
+    let pixel_delta_v = VIEWPORT_V / IMAGE_HEIGHT as f64;
 
     // Calculate the location of the upper left pixel
     let viewport_upper_left =
         CAMERA_CENTER - Vector3::new(0.0, 0.0, FOCAL_LENGTH) - VIEWPORT_U / 2.0 - VIEWPORT_V / 2.0;
     let pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
-    (0..height)
-        .cartesian_product(0..width)
-        .progress_count(height as u64 * width as u64)
+    let pixels = (0..IMAGE_HEIGHT)
+        .cartesian_product(0..IMAGE_WIDTH)
+        .progress_count(IMAGE_HEIGHT as u64 * IMAGE_WIDTH as u64)
         .map(|(y, x)| {
             let pixel_center =
                 pixel00_loc + (x as f64 * pixel_delta_u) + (y as f64 * pixel_delta_v);
@@ -39,22 +50,17 @@ fn generate_gradient(width: u32, height: u32) -> String {
                 direction: ray_direction,
             };
 
-            let pixel_color = ray.color() * MAX_VALUE as f64;
+            let pixel_color = ray.color(&world) * MAX_VALUE as f64;
 
             format!(
                 "{} {} {}",
                 pixel_color.x as u8, pixel_color.y as u8, pixel_color.z as u8
             )
         })
-        .join("\n")
-}
-
-/// Write a ppm file
-fn write_ppm_file(filename: &str) -> io::Result<()> {
-    let pixels = generate_gradient(IMAGE_WIDTH, IMAGE_HEIGHT);
+        .join("\n");
 
     fs::write(
-        filename,
+        "output.ppm",
         format!(
             "P3
 {IMAGE_WIDTH} {IMAGE_HEIGHT}
@@ -64,16 +70,6 @@ fn write_ppm_file(filename: &str) -> io::Result<()> {
     )?;
 
     Ok(())
-}
-
-fn main() {
-    let filename = "image.ppm";
-
-    if let Err(e) = write_ppm_file(filename) {
-        eprintln!("Error writing PPM file: {e}");
-    } else {
-        println!("PPM file '{filename}' created successfully.");
-    }
 }
 
 struct Ray {
@@ -86,7 +82,11 @@ impl Ray {
         self.origin + self.direction * t
     }
 
-    fn color(&self) -> Vector3<f64> {
+    fn color<T>(&self, world: &T) -> Vector3<f64> where T: Hittable {
+        if let Some(rec) = world.hit(self, 0.0, f64::INFINITY) {
+            return 0.5 * (rec.normal + Vector3::new(1.0, 1.0, 1.0));
+        }
+        
         let t = hit_sphere(&Vector3::new(0.0, 0.0, -1.0), 0.5, self);
         if t > 0.0 {
             let n = (self.at(t) - Vector3::new(0.0, 0.0, -1.0)).normalize();
@@ -169,9 +169,9 @@ impl Hittable for Sphere {
         let sqrtd = discriminant.sqrt();
 
         // Find the nearest root that lies in the acceptable range.
-        let mut root = (h - sqrtd) / a;
+        let mut root = (-h - sqrtd) / a;
         if root <= ray_tmin || ray_tmax <= root {
-            root = (h - sqrtd) / a;
+            root = (-h - sqrtd) / a;
             if root <= ray_tmin || ray_tmax <= root {
                 return None;
             }
@@ -199,7 +199,7 @@ impl HittableList {
     fn clear(&mut self) {
         self.hittables.clear();
     }
-    
+
     fn add<T>(&mut self, hittable: T) where T: Hittable + 'static {
         self.hittables.push(Box::new(hittable));
     }
@@ -207,7 +207,7 @@ impl HittableList {
 
 impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let (closest, hit_record) = self.hittables.iter().fold((t_max, None), |acc, item| {
+        let (_closest, hit_record) = self.hittables.iter().fold((t_max, None), |acc, item| {
             if let Some(temp_rec) = item.hit(ray, t_min, acc.0) {
                 (temp_rec.t, Some(temp_rec))
             } else {
@@ -215,19 +215,5 @@ impl Hittable for HittableList {
             }
         });
         hit_record
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_generate_gradient() {
-        let pixels = generate_gradient(4, 2);
-        assert_eq!(
-            pixels,
-            "172 205 255\n164 200 255\n164 200 255\n172 205 255\n209 227 255\n217 232 255\n217 232 255\n209 227 255"
-        );
     }
 }
