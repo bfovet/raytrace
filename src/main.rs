@@ -191,6 +191,33 @@ impl Hittable for Sphere {
     }
 }
 
+struct HittableList {
+    hittables: Vec<Box<dyn Hittable>>,
+}
+
+impl HittableList {
+    fn clear(&mut self) {
+        self.hittables.clear();
+    }
+    
+    fn add<T>(&mut self, hittable: T) where T: Hittable + 'static {
+        self.hittables.push(Box::new(hittable));
+    }
+}
+
+impl Hittable for HittableList {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let (closest, hit_record) = self.hittables.iter().fold((t_max, None), |acc, item| {
+            if let Some(temp_rec) = item.hit(ray, t_min, acc.0) {
+                (temp_rec.t, Some(temp_rec))
+            } else {
+                acc
+            }
+        });
+        hit_record
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
