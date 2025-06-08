@@ -118,9 +118,36 @@ trait Hittable {
 }
 
 struct HitRecord {
-    p: Vector3<f64>,
+    point: Vector3<f64>,
     normal: Vector3<f64>,
     t: f64,
+    front_face: bool,
+}
+
+impl HitRecord {
+    fn new(point: Vector3<f64>, outward_normal: Vector3<f64>, t: f64, ray: &Ray) -> Self {
+        let front_face = ray.direction.dot(&outward_normal) < 0.0;
+        let normal = if front_face {
+            outward_normal
+        } else {
+            -outward_normal
+        };
+        HitRecord {
+            point,
+            normal,
+            t,
+            front_face,
+        }
+    }
+
+    fn set_face_normal(&mut self, ray: &Ray, outward_normal: &Vector3<f64>) {
+        self.front_face = ray.direction.dot(&self.normal) < 0.0;
+        self.normal = if self.front_face {
+            *outward_normal
+        } else {
+            -*outward_normal
+        }
+    }
 }
 
 struct Sphere {
@@ -151,11 +178,14 @@ impl Hittable for Sphere {
         }
 
         let t = root;
-        let rec = HitRecord {
-            p: ray.at(t),
-            normal: (ray.at(t) - self.center) / self.radius,
+        let point = ray.at(t);
+        let outward_normal = (point - self.center) / self.radius;
+        let rec = HitRecord::new(
+            point,
+            outward_normal,
             t,
-        };
+            ray,
+        );
 
         Some(rec)
     }
