@@ -113,6 +113,54 @@ fn hit_sphere(center: &Vector3<f64>, radius: f64, ray: &Ray) -> f64 {
     }
 }
 
+trait Hittable {
+    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<HitRecord>;
+}
+
+struct HitRecord {
+    p: Vector3<f64>,
+    normal: Vector3<f64>,
+    t: f64,
+}
+
+struct Sphere {
+    center: Vector3<f64>,
+    radius: f64,
+}
+
+impl Hittable for Sphere {
+    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<HitRecord> {
+        let oc = ray.origin - self.center;
+        let a = ray.direction.magnitude_squared();
+        let h = oc.dot(&ray.direction);
+        let c = oc.magnitude_squared() - self.radius * self.radius;
+
+        let discriminant = h * h - a * c;
+        if discriminant < 0. {
+            return None;
+        }
+        let sqrtd = discriminant.sqrt();
+
+        // Find the nearest root that lies in the acceptable range.
+        let mut root = (h - sqrtd) / a;
+        if root <= ray_tmin || ray_tmax <= root {
+            root = (h - sqrtd) / a;
+            if root <= ray_tmin || ray_tmax <= root {
+                return None;
+            }
+        }
+
+        let t = root;
+        let rec = HitRecord {
+            p: ray.at(t),
+            normal: (ray.at(t) - self.center) / self.radius,
+            t,
+        };
+
+        Some(rec)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
