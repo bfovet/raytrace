@@ -3,6 +3,7 @@ use itertools::Itertools;
 use lerp::Lerp;
 use nalgebra::{Vector3};
 use std::{fs, io};
+use std::ops::Range;
 
 const IMAGE_WIDTH: u32 = 400;
 const MAX_VALUE: u8 = 255;
@@ -83,7 +84,7 @@ impl Ray {
     }
 
     fn color<T>(&self, world: &T) -> Vector3<f64> where T: Hittable {
-        if let Some(rec) = world.hit(self, 0.0, f64::INFINITY) {
+        if let Some(rec) = world.hit(self, (0.0)..f64::INFINITY) {
             return 0.5 * (rec.normal + Vector3::new(1.0, 1.0, 1.0));
         }
         
@@ -114,7 +115,7 @@ fn hit_sphere(center: &Vector3<f64>, radius: f64, ray: &Ray) -> f64 {
 }
 
 trait Hittable {
-    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<HitRecord>;
+    fn hit(&self, ray: &Ray, interval: Range<f64>) -> Option<HitRecord>;
 }
 
 struct HitRecord {
@@ -156,7 +157,7 @@ struct Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, interval: Range<f64>) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
         let a = ray.direction.magnitude_squared();
         let h = oc.dot(&ray.direction);
@@ -170,9 +171,9 @@ impl Hittable for Sphere {
 
         // Find the nearest root that lies in the acceptable range.
         let mut root = (-h - sqrtd) / a;
-        if root <= ray_tmin || ray_tmax <= root {
+        if !interval.contains(&root) {
             root = (-h - sqrtd) / a;
-            if root <= ray_tmin || ray_tmax <= root {
+            if !interval.contains(&root) {
                 return None;
             }
         }
@@ -206,9 +207,9 @@ impl HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let (_closest, hit_record) = self.hittables.iter().fold((t_max, None), |acc, item| {
-            if let Some(temp_rec) = item.hit(ray, t_min, acc.0) {
+    fn hit(&self, ray: &Ray, interval: Range<f64>) -> Option<HitRecord> {
+        let (_closest, hit_record) = self.hittables.iter().fold((interval.end, None), |acc, item| {
+            if let Some(temp_rec) = item.hit(ray, interval.start..acc.0) {
                 (temp_rec.t, Some(temp_rec))
             } else {
                 acc
