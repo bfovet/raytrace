@@ -1,76 +1,110 @@
 use indicatif::ProgressIterator;
 use itertools::Itertools;
 use lerp::Lerp;
-use nalgebra::{Vector3};
-use std::{fs, io};
+use nalgebra::Vector3;
 use std::ops::Range;
-
-const IMAGE_WIDTH: u32 = 400;
-const MAX_VALUE: u8 = 255;
-const ASPECT_RATIO: f64 = 16.0 / 9.0;
-const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
-const VIEWPORT_HEIGHT: f64 = 2.0;
-const VIEWPORT_WIDTH: f64 = VIEWPORT_HEIGHT * (IMAGE_WIDTH as f64 / IMAGE_HEIGHT as f64);
-const FOCAL_LENGTH: f64 = 1.0;
-const CAMERA_CENTER: Vector3<f64> = Vector3::new(0.0, 0.0, 0.0);
-
-// Calculate the vectors across the horizontal and down the vertical viewport edges
-const VIEWPORT_U: Vector3<f64> = Vector3::new(VIEWPORT_WIDTH, 0.0, 0.0);
-const VIEWPORT_V: Vector3<f64> = Vector3::new(0.0, -VIEWPORT_HEIGHT, 0.0);
+use std::{fs, io};
 
 fn main() -> io::Result<()> {
     let mut world = HittableList { hittables: vec![] };
 
     world.add(Sphere {
         center: Vector3::new(0.0, 0.0, -1.0),
-        radius: 0.5
+        radius: 0.5,
     });
     world.add(Sphere {
         center: Vector3::new(0.0, -100.5, -1.0),
-        radius: 100.0
+        radius: 100.0,
     });
 
-    // Calculate the horizontal and vertical delta vectors from pixel to pixel
-    let pixel_delta_u = VIEWPORT_U / IMAGE_WIDTH as f64;
-    let pixel_delta_v = VIEWPORT_V / IMAGE_HEIGHT as f64;
-
-    // Calculate the location of the upper left pixel
-    let viewport_upper_left =
-        CAMERA_CENTER - Vector3::new(0.0, 0.0, FOCAL_LENGTH) - VIEWPORT_U / 2.0 - VIEWPORT_V / 2.0;
-    let pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
-
-    let pixels = (0..IMAGE_HEIGHT)
-        .cartesian_product(0..IMAGE_WIDTH)
-        .progress_count(IMAGE_HEIGHT as u64 * IMAGE_WIDTH as u64)
-        .map(|(y, x)| {
-            let pixel_center =
-                pixel00_loc + (x as f64 * pixel_delta_u) + (y as f64 * pixel_delta_v);
-            let ray_direction = pixel_center - CAMERA_CENTER;
-            let ray = Ray {
-                origin: CAMERA_CENTER,
-                direction: ray_direction,
-            };
-
-            let pixel_color = ray.color(&world) * MAX_VALUE as f64;
-
-            format!(
-                "{} {} {}",
-                pixel_color.x as u8, pixel_color.y as u8, pixel_color.z as u8
-            )
-        })
-        .join("\n");
-
-    fs::write(
-        "output.ppm",
-        format!(
-            "P3
-{IMAGE_WIDTH} {IMAGE_HEIGHT}
-{MAX_VALUE}
-{pixels}"
-        ),
-    )?;
-
+    let camera = Camera::new(400, 16.0 / 9.0);
+    camera.render_to_disk(world)?;
+    
     Ok(())
+}
+
+struct Camera {
+    image_width: u32,
+    image_height: u32,
+    max_value: u8,
+    aspect_ratio: f64,
+    center: Vector3<f64>,
+    pixel_delta_u: Vector3<f64>,
+    pixel_delta_v: Vector3<f64>,
+    pixel00_loc: Vector3<f64>,
+}
+
+impl Camera {
+    fn new(image_width: u32, aspect_ratio: f64) -> Self {
+        let max_value: u8 = 255;
+        let image_height: u32 = (image_width as f64 / aspect_ratio) as u32;
+        let viewport_height: f64 = 2.0;
+        let viewport_width: f64 = viewport_height * (image_width as f64 / image_height as f64);
+        let focal_length: f64 = 1.0;
+        let center: Vector3<f64> = Vector3::zeros();
+
+        // Calculate the vectors across the horizontal and down the vertical viewport edges.
+        let viewport_u: Vector3<f64> = Vector3::new(viewport_width, 0., 0.);
+        let viewport_v: Vector3<f64> = Vector3::new(0., -viewport_height, 0.);
+
+        // Calculate the horizontal and vertical delta vectors from pixel to pixel.
+        let pixel_delta_u: Vector3<f64> = viewport_u / image_width as f64;
+        let pixel_delta_v: Vector3<f64> = viewport_v / image_height as f64;
+
+        // Calculate the location of the upper left pixel.
+        let viewport_upper_left: Vector3<f64> =
+            center - Vector3::new(0., 0., focal_length) - viewport_u / 2. - viewport_v / 2.;
+        let pixel00_loc: Vector3<f64> = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+
+        Self {
+            image_width,
+            image_height,
+            max_value,
+            aspect_ratio,
+            center,
+            pixel_delta_u,
+            pixel_delta_v,
+            pixel00_loc,
+        }
+    }
+
+    fn render_to_disk<T>(&self, world: T) -> io::Result<()>
+    where
+        T: Hittable,
+    {
+        let pixels = (0..self.image_height)
+            .cartesian_product(0..self.image_width)
+            .progress_count(self.image_height as u64 * self.image_width as u64)
+            .map(|(y, x)| {
+                let pixel_center = self.pixel00_loc
+                    + (x as f64 * self.pixel_delta_u)
+                    + (y as f64 * self.pixel_delta_v);
+                let ray_direction = pixel_center - self.center;
+                let ray = Ray {
+                    origin: self.center,
+                    direction: ray_direction,
+                };
+
+                let pixel_color = ray.color(&world) * self.max_value as f64;
+
+                format!(
+                    "{} {} {}",
+                    pixel_color.x as u8, pixel_color.y as u8, pixel_color.z as u8
+                )
+            })
+            .join("\n");
+
+        fs::write(
+            "output.ppm",
+            format!(
+                "P3
+{} {}
+{}
+{pixels}",
+                self.image_width, self.image_height, self.max_value
+            ),
+        )
+    }
 }
 
 struct Ray {
@@ -83,34 +117,17 @@ impl Ray {
         self.origin + self.direction * t
     }
 
-    fn color<T>(&self, world: &T) -> Vector3<f64> where T: Hittable {
+    fn color<T>(&self, world: &T) -> Vector3<f64>
+    where
+        T: Hittable,
+    {
         if let Some(rec) = world.hit(self, (0.0)..f64::INFINITY) {
             return 0.5 * (rec.normal + Vector3::new(1.0, 1.0, 1.0));
-        }
-        
-        let t = hit_sphere(&Vector3::new(0.0, 0.0, -1.0), 0.5, self);
-        if t > 0.0 {
-            let n = (self.at(t) - Vector3::new(0.0, 0.0, -1.0)).normalize();
-            return 0.5 * n.add_scalar(1.0);
         }
 
         let unit_direction = self.direction.normalize();
         let a = 0.5 * (unit_direction.y + 1.0);
         Vector3::new(1.0, 1.0, 1.0).lerp(Vector3::new(0.5, 0.7, 1.0), a)
-    }
-}
-
-fn hit_sphere(center: &Vector3<f64>, radius: f64, ray: &Ray) -> f64 {
-    let oc = center - ray.origin;
-    let a = ray.direction.magnitude_squared();
-    let h = ray.direction.dot(&oc);
-    let c = oc.magnitude_squared() - radius * radius;
-    let discriminant = h * h - a * c;
-
-    if discriminant < 0.0 {
-        -1.0
-    } else {
-        (h - discriminant.sqrt()) / a
     }
 }
 
@@ -181,12 +198,7 @@ impl Hittable for Sphere {
         let t = root;
         let point = ray.at(t);
         let outward_normal = (point - self.center) / self.radius;
-        let rec = HitRecord::new(
-            point,
-            outward_normal,
-            t,
-            ray,
-        );
+        let rec = HitRecord::new(point, outward_normal, t, ray);
 
         Some(rec)
     }
@@ -201,20 +213,26 @@ impl HittableList {
         self.hittables.clear();
     }
 
-    fn add<T>(&mut self, hittable: T) where T: Hittable + 'static {
+    fn add<T>(&mut self, hittable: T)
+    where
+        T: Hittable + 'static,
+    {
         self.hittables.push(Box::new(hittable));
     }
 }
 
 impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, interval: Range<f64>) -> Option<HitRecord> {
-        let (_closest, hit_record) = self.hittables.iter().fold((interval.end, None), |acc, item| {
-            if let Some(temp_rec) = item.hit(ray, interval.start..acc.0) {
-                (temp_rec.t, Some(temp_rec))
-            } else {
-                acc
-            }
-        });
+        let (_closest, hit_record) =
+            self.hittables
+                .iter()
+                .fold((interval.end, None), |acc, item| {
+                    if let Some(temp_rec) = item.hit(ray, interval.start..acc.0) {
+                        (temp_rec.t, Some(temp_rec))
+                    } else {
+                        acc
+                    }
+                });
         hit_record
     }
 }
