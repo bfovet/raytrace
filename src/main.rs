@@ -2,6 +2,7 @@ use indicatif::ProgressIterator;
 use itertools::Itertools;
 use lerp::Lerp;
 use nalgebra::Vector3;
+use rand::Rng;
 use std::ops::Range;
 use std::{fs, io};
 
@@ -19,7 +20,7 @@ fn main() -> io::Result<()> {
 
     let camera = Camera::new(400, 16.0 / 9.0);
     camera.render_to_disk(world)?;
-    
+
     Ok(())
 }
 
@@ -32,6 +33,7 @@ struct Camera {
     pixel_delta_u: Vector3<f64>,
     pixel_delta_v: Vector3<f64>,
     pixel00_loc: Vector3<f64>,
+    samples_per_pixel: u32,
 }
 
 impl Camera {
@@ -65,7 +67,32 @@ impl Camera {
             pixel_delta_u,
             pixel_delta_v,
             pixel00_loc,
+            samples_per_pixel: 100,
         }
+    }
+
+    fn get_ray(&self, i: i32, j: i32) -> Ray {
+        // Get a randomly sampled camera ray for the pixel at location i,j.
+
+        let pixel_center =
+            self.pixel00_loc + (i as f64 * self.pixel_delta_u) + (j as f64 * self.pixel_delta_v);
+        let pixel_sample = pixel_center + self.pixel_sample_square();
+
+        let ray_origin = self.center;
+        let ray_direction = pixel_sample - ray_origin;
+
+        Ray {
+            origin: self.center,
+            direction: ray_direction,
+        }
+    }
+
+    fn pixel_sample_square(&self) -> Vector3<f64> {
+        let mut rng = rand::rng();
+        // Returns a random point in the square surrounding a pixel at the origin.
+        let px = -0.5 + rng.random::<f64>();
+        let py = -0.5 + rng.random::<f64>();
+        (px * self.pixel_delta_u) + (py * self.pixel_delta_v)
     }
 
     fn render_to_disk<T>(&self, world: T) -> io::Result<()>
@@ -76,20 +103,18 @@ impl Camera {
             .cartesian_product(0..self.image_width)
             .progress_count(self.image_height as u64 * self.image_width as u64)
             .map(|(y, x)| {
-                let pixel_center = self.pixel00_loc
-                    + (x as f64 * self.pixel_delta_u)
-                    + (y as f64 * self.pixel_delta_v);
-                let ray_direction = pixel_center - self.center;
-                let ray = Ray {
-                    origin: self.center,
-                    direction: ray_direction,
-                };
+                let scale_factor = (self.samples_per_pixel as f64).recip();
 
-                let pixel_color = ray.color(&world) * self.max_value as f64;
+                let multisampled_pixel_color = (0..self.samples_per_pixel)
+                    .into_iter()
+                    .map(|_| self.get_ray(x as i32, y as i32).color(&world) * 255.0 * scale_factor)
+                    .sum::<Vector3<f64>>();
 
                 format!(
                     "{} {} {}",
-                    pixel_color.x as u8, pixel_color.y as u8, pixel_color.z as u8
+                    multisampled_pixel_color.x as u8,
+                    multisampled_pixel_color.y as u8,
+                    multisampled_pixel_color.z as u8
                 )
             })
             .join("\n");
