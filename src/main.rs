@@ -9,13 +9,38 @@ use std::{fs, io};
 fn main() -> io::Result<()> {
     let mut world = HittableList { hittables: vec![] };
 
+    let material_ground = Material::Lambertian {
+        albedo: Vector3::new(0.8, 0.8, 0.0),
+    };
+    let material_center = Material::Lambertian {
+        albedo: Vector3::new(0.7, 0.3, 0.3),
+    };
+    let material_left = Material::Metal {
+        albedo: Vector3::new(0.8, 0.8, 0.8),
+    };
+    let material_right = Material::Metal {
+        albedo: Vector3::new(0.8, 0.6, 0.2),
+    };
+    
     world.add(Sphere {
         center: Vector3::new(0.0, 0.0, -1.0),
         radius: 0.5,
+        material: material_ground,
     });
     world.add(Sphere {
         center: Vector3::new(0.0, -100.5, -1.0),
         radius: 100.0,
+        material: material_center,
+    });
+    world.add(Sphere {
+        center: Vector3::new(-1.0, 0.0, -1.0),
+        radius: 0.5,
+        material: material_left,
+    });
+    world.add(Sphere {
+        center: Vector3::new(1.0, 0.0, -1.0),
+        radius: 0.5,
+        material: material_right,
     });
 
     let camera = Camera::new(400, 16.0 / 9.0);
@@ -185,15 +210,35 @@ trait Hittable {
     fn hit(&self, ray: &Ray, interval: Range<f64>) -> Option<HitRecord>;
 }
 
+#[non_exhaustive]
+#[derive(Clone)]
+enum Material {
+    Lambertian { albedo: Vector3<f64> },
+    Metal { albedo: Vector3<f64> },
+}
+
+struct Scattered {
+    attenuation: Vector3<f64>,
+    scattered: Ray,
+}
+
+impl Material {
+    fn scatter(&self, r_in: &Ray, hit_record: HitRecord) -> Option<Scattered> {
+        todo!()
+    }
+}
+
+#[derive(Clone)]
 struct HitRecord {
     point: Vector3<f64>,
     normal: Vector3<f64>,
     t: f64,
     front_face: bool,
+    material: Material,
 }
 
 impl HitRecord {
-    fn new(point: Vector3<f64>, outward_normal: Vector3<f64>, t: f64, ray: &Ray) -> Self {
+    fn new(material: Material, point: Vector3<f64>, outward_normal: Vector3<f64>, t: f64, ray: &Ray) -> Self {
         let front_face = ray.direction.dot(&outward_normal) < 0.0;
         let normal = if front_face {
             outward_normal
@@ -201,6 +246,7 @@ impl HitRecord {
             -outward_normal
         };
         HitRecord {
+            material,
             point,
             normal,
             t,
@@ -221,6 +267,7 @@ impl HitRecord {
 struct Sphere {
     center: Vector3<f64>,
     radius: f64,
+    material: Material,
 }
 
 impl Hittable for Sphere {
@@ -248,7 +295,7 @@ impl Hittable for Sphere {
         let t = root;
         let point = ray.at(t);
         let outward_normal = (point - self.center) / self.radius;
-        let rec = HitRecord::new(point, outward_normal, t, ray);
+        let rec = HitRecord::new(self.material.clone(), point, outward_normal, t, ray);
 
         Some(rec)
     }
