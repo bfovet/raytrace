@@ -151,7 +151,7 @@ impl Ray {
         if depth <= 0 {
             return Vector3::zeros();
         }
-        if let Some(rec) = world.hit(self, (0.0)..f64::INFINITY) {
+        if let Some(rec) = world.hit(self, (0.001)..f64::INFINITY) {
             let direction = random_on_hemisphere(&rec.normal);
             let ray = Ray {
                 origin: rec.point,
