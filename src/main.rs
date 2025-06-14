@@ -1,11 +1,12 @@
 use approx::AbsDiffEq;
-use indicatif::ProgressIterator;
+use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use lerp::Lerp;
 use nalgebra::Vector3;
 use rand::Rng;
 use std::ops::Range;
 use std::{fs, io};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 fn main() -> io::Result<()> {
     let mut world = HittableList { hittables: vec![] };
@@ -127,10 +128,12 @@ impl Camera {
 
     fn render_to_disk<T>(&self, world: T) -> io::Result<()>
     where
-        T: Hittable,
+        T: Hittable + std::marker::Sync,
     {
         let pixels = (0..self.image_height)
             .cartesian_product(0..self.image_width)
+            .collect::<Vec<(u32, u32)>>()
+            .into_par_iter()
             .progress_count(self.image_height as u64 * self.image_width as u64)
             .map(|(y, x)| {
                 let scale_factor = (self.samples_per_pixel as f64).recip();
@@ -158,6 +161,7 @@ impl Camera {
                     multisampled_pixel_color.z as u8
                 )
             })
+            .collect::<Vec<String>>()
             .join("\n");
 
         fs::write(
@@ -189,7 +193,7 @@ impl Ray {
 
     fn color<T>(&self, depth: i32, world: &T) -> Vector3<f64>
     where
-        T: Hittable,
+        T: Hittable + std::marker::Sync,
     {
         if depth <= 0 {
             return Vector3::zeros();
@@ -349,7 +353,7 @@ impl Hittable for Sphere {
 }
 
 struct HittableList {
-    hittables: Vec<Box<dyn Hittable>>,
+    hittables: Vec<Box<dyn Hittable + Sync>>,
 }
 
 impl HittableList {
@@ -359,7 +363,7 @@ impl HittableList {
 
     fn add<T>(&mut self, hittable: T)
     where
-        T: Hittable + 'static,
+        T: Hittable + 'static + Sync,
     {
         self.hittables.push(Box::new(hittable));
     }
