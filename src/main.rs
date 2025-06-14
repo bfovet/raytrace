@@ -1,3 +1,4 @@
+use approx::AbsDiffEq;
 use indicatif::ProgressIterator;
 use itertools::Itertools;
 use lerp::Lerp;
@@ -21,7 +22,7 @@ fn main() -> io::Result<()> {
     let material_right = Material::Metal {
         albedo: Vector3::new(0.8, 0.6, 0.2),
     };
-    
+
     world.add(Sphere {
         center: Vector3::new(0.0, 0.0, -1.0),
         radius: 0.5,
@@ -192,12 +193,14 @@ impl Ray {
             return Vector3::zeros();
         }
         if let Some(rec) = world.hit(self, (0.001)..f64::INFINITY) {
-            let direction = rec.normal + random_unit_vector();
-            let ray = Ray {
-                origin: rec.point,
-                direction,
-            };
-            return 0.5 * ray.color(depth - 1, world);
+            if let Some(Scattered {
+                attenuation,
+                scattered,
+            }) = rec.material.scatter(self, rec.clone())
+            {
+                return attenuation.component_mul(&scattered.color(depth - 1, world));
+            }
+            return Vector3::zeros();
         }
 
         let unit_direction = self.direction.normalize();
@@ -224,7 +227,40 @@ struct Scattered {
 
 impl Material {
     fn scatter(&self, r_in: &Ray, hit_record: HitRecord) -> Option<Scattered> {
-        todo!()
+        match self {
+            Material::Lambertian { albedo } => {
+                let mut scatter_direction = hit_record.normal + random_unit_vector();
+
+                // Catch degenerate scatter direction
+                if scatter_direction.abs_diff_eq(&Vector3::new(0., 0., 0.), 1e-8) {
+                    scatter_direction = hit_record.normal;
+                }
+
+                let scattered = Ray {
+                    origin: hit_record.point,
+                    direction: scatter_direction,
+                };
+
+                Some(Scattered {
+                    attenuation: *albedo,
+                    scattered,
+                })
+            }
+            Material::Metal { albedo } => {
+                let reflected: Vector3<f64> = reflect(
+                    &r_in.direction.normalize(),
+                    &hit_record.normal,
+                );
+                Some(Scattered {
+                    attenuation: *albedo,
+                    scattered: Ray {
+                        origin: hit_record.point,
+                        direction: reflected,
+                    },
+                })
+            }
+            _ => None,
+        }
     }
 }
 
@@ -238,7 +274,13 @@ struct HitRecord {
 }
 
 impl HitRecord {
-    fn new(material: Material, point: Vector3<f64>, outward_normal: Vector3<f64>, t: f64, ray: &Ray) -> Self {
+    fn new(
+        material: Material,
+        point: Vector3<f64>,
+        outward_normal: Vector3<f64>,
+        t: f64,
+        ray: &Ray,
+    ) -> Self {
         let front_face = ray.direction.dot(&outward_normal) < 0.0;
         let normal = if front_face {
             outward_normal
@@ -361,4 +403,8 @@ fn random_on_hemisphere(normal: &Vector3<f64>) -> Vector3<f64> {
     } else {
         -on_unit_sphere
     }
+}
+
+fn reflect(v: &Vector3<f64>, n: &Vector3<f64>) -> Vector3<f64> {
+    v - 2.0 * v.dot(n) * n
 }
