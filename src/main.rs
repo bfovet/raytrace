@@ -152,7 +152,7 @@ impl Ray {
             return Vector3::zeros();
         }
         if let Some(rec) = world.hit(self, (0.001)..f64::INFINITY) {
-            let direction = random_on_hemisphere(&rec.normal);
+            let direction = rec.normal + random_unit_vector();
             let ray = Ray {
                 origin: rec.point,
                 direction,
