@@ -34,6 +34,7 @@ struct Camera {
     pixel_delta_v: Vector3<f64>,
     pixel00_loc: Vector3<f64>,
     samples_per_pixel: u32,
+    max_depth: u32,
 }
 
 impl Camera {
@@ -68,6 +69,7 @@ impl Camera {
             pixel_delta_v,
             pixel00_loc,
             samples_per_pixel: 100,
+            max_depth: 50,
         }
     }
 
@@ -107,7 +109,7 @@ impl Camera {
 
                 let multisampled_pixel_color = (0..self.samples_per_pixel)
                     .into_iter()
-                    .map(|_| self.get_ray(x as i32, y as i32).color(&world) * 255.0 * scale_factor)
+                    .map(|_| self.get_ray(x as i32, y as i32).color(self.max_depth as i32, &world) * 255.0 * scale_factor)
                     .sum::<Vector3<f64>>();
 
                 format!(
@@ -142,17 +144,20 @@ impl Ray {
         self.origin + self.direction * t
     }
 
-    fn color<T>(&self, world: &T) -> Vector3<f64>
+    fn color<T>(&self, depth: i32, world: &T) -> Vector3<f64>
     where
         T: Hittable,
     {
+        if depth <= 0 {
+            return Vector3::zeros();
+        }
         if let Some(rec) = world.hit(self, (0.0)..f64::INFINITY) {
             let direction = random_on_hemisphere(&rec.normal);
             let ray = Ray {
                 origin: rec.point,
                 direction,
             };
-            return 0.5 * ray.color(world);
+            return 0.5 * ray.color(depth - 1, world);
         }
 
         let unit_direction = self.direction.normalize();
@@ -271,7 +276,7 @@ fn random_in_unit_sphere() -> Vector3<f64> {
     let mut rng = rand::rng();
     loop {
         let vec = Vector3::new(rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0));
-        
+
         if vec.magnitude_squared() < 1.0 {
             break vec;
         }
