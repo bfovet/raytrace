@@ -109,7 +109,18 @@ impl Camera {
 
                 let multisampled_pixel_color = (0..self.samples_per_pixel)
                     .into_iter()
-                    .map(|_| self.get_ray(x as i32, y as i32).color(self.max_depth as i32, &world) * 255.0 * scale_factor)
+                    .map(|_| {
+                        let color = self
+                            .get_ray(x as i32, y as i32)
+                            .color(self.max_depth as i32, &world)
+                            * 255.0
+                            * scale_factor;
+                        Vector3::new(
+                            linear_to_gamma(color.x),
+                            linear_to_gamma(color.y),
+                            linear_to_gamma(color.z),
+                        )
+                    })
                     .sum::<Vector3<f64>>();
 
                 format!(
@@ -132,6 +143,10 @@ impl Camera {
             ),
         )
     }
+}
+
+fn linear_to_gamma(scalar: f64) -> f64 {
+    scalar.sqrt()
 }
 
 struct Ray {
@@ -275,7 +290,11 @@ impl Hittable for HittableList {
 fn random_in_unit_sphere() -> Vector3<f64> {
     let mut rng = rand::rng();
     loop {
-        let vec = Vector3::new(rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0));
+        let vec = Vector3::new(
+            rng.random_range(-1.0..1.0),
+            rng.random_range(-1.0..1.0),
+            rng.random_range(-1.0..1.0),
+        );
 
         if vec.magnitude_squared() < 1.0 {
             break vec;
@@ -289,7 +308,8 @@ fn random_unit_vector() -> Vector3<f64> {
 
 fn random_on_hemisphere(normal: &Vector3<f64>) -> Vector3<f64> {
     let on_unit_sphere = random_unit_vector();
-    if on_unit_sphere.dot(normal) > 0.0 { // In the same hemisphere as the normal
+    if on_unit_sphere.dot(normal) > 0.0 {
+        // In the same hemisphere as the normal
         on_unit_sphere
     } else {
         -on_unit_sphere
