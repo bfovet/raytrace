@@ -3,6 +3,9 @@ name = "raytrace"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "raytrace"
+
 [dependencies]
 indicatif = { version = "0.17.11", features = ["rayon"] }
 itertools = "0.14.0"
