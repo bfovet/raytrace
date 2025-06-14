@@ -18,9 +18,11 @@ fn main() -> io::Result<()> {
     };
     let material_left = Material::Metal {
         albedo: Vector3::new(0.8, 0.8, 0.8),
+        fuzz: 0.3,
     };
     let material_right = Material::Metal {
         albedo: Vector3::new(0.8, 0.6, 0.2),
+        fuzz: 1.0,
     };
 
     world.add(Sphere {
@@ -217,7 +219,7 @@ trait Hittable {
 #[derive(Clone)]
 enum Material {
     Lambertian { albedo: Vector3<f64> },
-    Metal { albedo: Vector3<f64> },
+    Metal { albedo: Vector3<f64>, fuzz: f64 },
 }
 
 struct Scattered {
@@ -246,18 +248,21 @@ impl Material {
                     scattered,
                 })
             }
-            Material::Metal { albedo } => {
-                let reflected: Vector3<f64> = reflect(
-                    &r_in.direction.normalize(),
-                    &hit_record.normal,
-                );
-                Some(Scattered {
-                    attenuation: *albedo,
-                    scattered: Ray {
-                        origin: hit_record.point,
-                        direction: reflected,
-                    },
-                })
+            Material::Metal { albedo, fuzz } => {
+                let reflected: Vector3<f64> =
+                    reflect(&r_in.direction.normalize(), &hit_record.normal);
+                let scattered = Ray {
+                    origin: hit_record.point,
+                    direction: reflected + *fuzz * random_unit_vector(),
+                };
+                if scattered.direction.dot(&hit_record.normal) > 0.0 {
+                    Some(Scattered {
+                        attenuation: *albedo,
+                        scattered,
+                    })
+                } else {
+                    None
+                }
             }
             _ => None,
         }
