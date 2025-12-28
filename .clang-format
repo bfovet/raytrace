@@ -1,0 +1,31 @@
+---
+BasedOnStyle: Mozilla
+AlignAfterOpenBracket: DontAlign
+AlignOperands: DontAlign
+AllowShortFunctionsOnASingleLine: None
+AllowShortLambdasOnASingleLine: None
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+BinPackParameters: false
+BinPackArguments: false
+BraceWrapping:
+  AfterNamespace: true
+  AfterFunction: true
+  AfterClass: true
+  AfterStruct: true
+  AfterEnum: true
+  BeforeLambdaBody: false
+BreakBeforeBraces: Custom
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+Cpp11BracedListStyle: true
+IndentPPDirectives: None
+FixNamespaceComments: true
+PackConstructorInitializers: Never
+QualifierAlignment: Left
+ReferenceAlignment: Left
+SeparateDefinitionBlocks: Always
+SpaceAroundPointerQualifiers: Before
+Standard: c++20
+ColumnLimit: 80
+LambdaBodyIndentation: OuterScope

@@ -1,0 +1,6 @@
+---
+Checks: '-*, cppcoreguidelines-*, readability-*'
+WarningsAsErrors: ''
+HeaderFilterRegex: '*.hpp'
+AnalyzeTemporaryDtors: false
+FormatStyle: none
