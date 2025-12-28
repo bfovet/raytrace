@@ -3,8 +3,22 @@
 
 #include <iostream>
 
+bool hit_sphere(const point3& center, double radius, const ray& r)
+{
+  const vec3 oc = center - r.origin();
+  const auto a = dot(r.direction(), r.direction());
+  const auto b = -2.0 * dot(r.direction(), oc);
+  const auto c = dot(oc, oc) - radius * radius;
+  const auto discriminant = b * b - 4 * a * c;
+  return (discriminant >= 0);
+}
+
 color ray_color(const ray& r)
 {
+  if (hit_sphere(point3(0, 0, -1), 0.5, r)) {
+    return {1, 0, 0};
+  }
+
   const vec3 unit_direction = unit_vector(r.direction());
   const auto a = 0.5 * (unit_direction.y() + 1.0);
   return (1.0 - a) * color(1.0, 1.0, 1.0) + a * color(0.5, 0.7, 1.0);
@@ -12,8 +26,8 @@ color ray_color(const ray& r)
 
 auto main() -> int
 {
-  const auto aspect_ratio = 16.0 / 9.0;
-  int image_width = 400;
+  constexpr auto aspect_ratio = 16.0 / 9.0;
+  constexpr int image_width = 400;
 
   // Calculate the image height, and ensure that it's at least 1.
   int image_height = static_cast<int>(image_width / aspect_ratio);
@@ -21,8 +35,8 @@ auto main() -> int
 
   // Camera
 
-  const auto focal_length = 1.0;
-  const auto viewport_height = 2.0;
+  constexpr auto focal_length = 1.0;
+  constexpr auto viewport_height = 2.0;
   const auto viewport_width =
     viewport_height * (static_cast<double>(image_width) / image_height);
   const auto camera_center = point3(0, 0, 0);
