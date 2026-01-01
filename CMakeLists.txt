@@ -7,5 +7,7 @@ add_executable(raytrace
         color.hpp
         ray.hpp
         hittable.hpp
-        sphere.hpp)
+        sphere.hpp
+        hittable_list.hpp
+        rtweekend.hpp)
 target_sources(raytrace PUBLIC main.cpp)
