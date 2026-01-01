@@ -6,15 +6,14 @@
 double hit_sphere(const point3& center, double radius, const ray& r)
 {
   const vec3 oc = center - r.origin();
-  const auto a = dot(r.direction(), r.direction());
-  const auto b = -2.0 * dot(r.direction(), oc);
-  const auto c = dot(oc, oc) - radius * radius;
-  const auto discriminant = b * b - 4 * a * c;
+  const auto a = r.direction().length_squared();
+  const auto h = dot(r.direction(), oc);
+  const auto c = oc.length_squared() - radius * radius;
 
-  if (discriminant < 0) {
+  if (const auto discriminant = h * h - a * c; discriminant < 0) {
     return -1.0;
   } else {
-    return (-b - std::sqrt(discriminant)) / (2.0 * a);
+    return (h - std::sqrt(discriminant)) / a;
   }
 }
 
