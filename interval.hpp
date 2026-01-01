@@ -1,5 +1,4 @@
 #pragma once
-#include "rtweekend.hpp"
 
 class interval
 {
@@ -23,14 +22,23 @@ public:
     return max - min;
   }
 
-  [[nodiscard]] bool contains(double x) const
+  [[nodiscard]] bool contains(const double x) const
   {
     return min <= x && x <= max;
   }
 
-  [[nodiscard]] bool surrounds(double x) const
+  [[nodiscard]] bool surrounds(const double x) const
   {
     return min < x && x < max;
+  }
+
+  [[nodiscard]] double clamp(const double x) const
+  {
+    if (x < min)
+      return min;
+    if (x > max)
+      return max;
+    return x;
   }
 
   static const interval empty, universe;
