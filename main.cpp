@@ -1,27 +1,16 @@
 #include "color.hpp"
+#include "hittable.hpp"
+#include "hittable_list.hpp"
 #include "ray.hpp"
+#include "rtweekend.hpp"
+#include "sphere.hpp"
 
 #include <iostream>
 
-double hit_sphere(const point3& center, double radius, const ray& r)
+color ray_color(const ray& r, const hittable& world)
 {
-  const vec3 oc = center - r.origin();
-  const auto a = r.direction().length_squared();
-  const auto h = dot(r.direction(), oc);
-  const auto c = oc.length_squared() - radius * radius;
-
-  if (const auto discriminant = h * h - a * c; discriminant < 0) {
-    return -1.0;
-  } else {
-    return (h - std::sqrt(discriminant)) / a;
-  }
-}
-
-color ray_color(const ray& r)
-{
-  if (const auto t = hit_sphere(point3(0, 0, -1), 0.5, r); t > 0.0) {
-    const vec3 N = unit_vector(r.at(t) - vec3(0, 0, -1));
-    return 0.5 * color(N.x() + 1, N.y() + 1, N.z() + 1);
+  if (hit_record rec; world.hit(r, 0, infinity, rec)) {
+    return 0.5 * (rec.normal + color(1, 1, 1));
   }
 
   const vec3 unit_direction = unit_vector(r.direction());
@@ -31,12 +20,21 @@ color ray_color(const ray& r)
 
 auto main() -> int
 {
+  // Image
+
   constexpr auto aspect_ratio = 16.0 / 9.0;
   constexpr int image_width = 400;
 
   // Calculate the image height, and ensure that it's at least 1.
   int image_height = static_cast<int>(image_width / aspect_ratio);
   image_height = (image_height < 1) ? 1 : image_height;
+
+  // World
+
+  hittable_list world;
+
+  world.add(make_shared<sphere>(point3(0, 0, -1), 0.5));
+  world.add(make_shared<sphere>(point3(0, -100.5, -1), 100));
 
   // Camera
 
@@ -61,7 +59,9 @@ auto main() -> int
   const auto pixel00_loc =
     viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
-  std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
+  // Render
+
+  std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
   for (int j = 0; j < image_height; j++) {
     std::clog << "\rScanlines remaining: " << (image_height - j) << ' '
@@ -72,12 +72,12 @@ auto main() -> int
       auto ray_direction = pixel_center - camera_center;
       ray r(camera_center, ray_direction);
 
-      color pixel_color = ray_color(r);
+      color pixel_color = ray_color(r, world);
       write_color(std::cout, pixel_color);
     }
   }
 
-  std::clog << "\rDone.                  \n";
+  std::clog << "\rDone.                 \n";
 
   return 0;
 }
