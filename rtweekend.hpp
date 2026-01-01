@@ -25,5 +25,6 @@ inline double degrees_to_radians(const double degrees)
 // Common Headers
 
 #include "color.hpp"
+#include "interval.hpp"
 #include "ray.hpp"
 #include "vec3.hpp"

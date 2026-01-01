@@ -9,5 +9,7 @@ add_executable(raytrace
         hittable.hpp
         sphere.hpp
         hittable_list.hpp
-        rtweekend.hpp)
+        rtweekend.hpp
+        interval.hpp
+        camera.hpp)
 target_sources(raytrace PUBLIC main.cpp)
