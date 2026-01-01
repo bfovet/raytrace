@@ -5,5 +5,7 @@ project(raytrace LANGUAGES CXX)
 add_executable(raytrace
         vec3.hpp
         color.hpp
-        ray.hpp)
+        ray.hpp
+        hittable.hpp
+        sphere.hpp)
 target_sources(raytrace PUBLIC main.cpp)
