@@ -1,16 +1,18 @@
 #pragma once
 
+#include <utility>
+
 #include "hittable.hpp"
 #include "rtweekend.hpp"
 
 class sphere : public hittable
 {
 public:
-  sphere(const point3& center, const double radius)
+  sphere(const point3& center, const double radius, shared_ptr<material> mat)
     : center(center),
-      radius(std::fmax(0, radius))
+      radius(std::fmax(0, radius)),
+      mat(std::move(mat))
   {
-    // TODO: Initialize the material pointer `mat`.
   }
 
   bool hit(const ray& r, const interval ray_t, hit_record& rec) const override

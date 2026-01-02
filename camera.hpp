@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hittable.hpp"
+#include "material.hpp"
 
 class camera
 {
@@ -103,8 +104,10 @@ private:
     }
 
     if (hit_record rec; world.hit(r, interval(0.001, infinity), rec)) {
-      const vec3 direction = rec.normal + random_unit_vector();
-      return 0.1 * ray_color(ray(rec.p, direction), depth - 1, world);
+      ray scattered;
+      if (color attenuation; rec.mat->scatter(r, rec, attenuation, scattered))
+        return attenuation * ray_color(scattered, depth - 1, world);
+      return {0, 0, 0};
     }
 
     const vec3 unit_direction = unit_vector(r.direction());
