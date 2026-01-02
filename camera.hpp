@@ -82,22 +82,21 @@ private:
     const auto ray_origin = center;
     const auto ray_direction = pixel_sample - ray_origin;
 
-    return ray(ray_origin, ray_direction);
+    return {ray_origin, ray_direction};
   }
 
   [[nodiscard]] vec3 sample_square() const
   {
     // Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit
     // square.
-    return vec3(random_double() - 0.5, random_double() - 0.5, 0);
+    return {random_double() - 0.5, random_double() - 0.5, 0};
   }
 
   [[nodiscard]] color ray_color(const ray& r, const hittable& world) const
   {
-    hit_record rec;
-
-    if (world.hit(r, interval(0, infinity), rec)) {
-      return 0.5 * (rec.normal + color(1, 1, 1));
+    if (hit_record rec; world.hit(r, interval(0, infinity), rec)) {
+      const vec3 direction = random_on_hemisphere(rec.normal);
+      return 0.5 * ray_color(ray(rec.p, direction), world);
     }
 
     const vec3 unit_direction = unit_vector(r.direction());
