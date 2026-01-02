@@ -11,5 +11,6 @@ add_executable(raytrace
         hittable_list.hpp
         rtweekend.hpp
         interval.hpp
-        camera.hpp)
+        camera.hpp
+        material.hpp)
 target_sources(raytrace PUBLIC main.cpp)
