@@ -104,7 +104,7 @@ private:
 
     if (hit_record rec; world.hit(r, interval(0.001, infinity), rec)) {
       const vec3 direction = rec.normal + random_unit_vector();
-      return 0.5 * ray_color(ray(rec.p, direction), depth - 1, world);
+      return 0.1 * ray_color(ray(rec.p, direction), depth - 1, world);
     }
 
     const vec3 unit_direction = unit_vector(r.direction());
